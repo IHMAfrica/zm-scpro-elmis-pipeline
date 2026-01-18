@@ -1,0 +1,4 @@
+defaultNamespace: zm-scpro-elmis-pipeline
+helm:
+  releaseName: zm-scpro-elmis-pipeline
+  chart: ./zm-scpro-elmis-pipeline-chart
