@@ -59,12 +59,12 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: zm-scpro-elmis-pipeline-credentials
-                  key: PRESCRIPTIONS_TOPIC
+                  key: PRESCRIPTION_TOPIC
             - name: PATIENT_PROFILE_TOPIC
               valueFrom:
                 secretKeyRef:
                   name: zm-scpro-elmis-pipeline-credentials
-                  key: PATIENT_PROFILES_TOPIC
+                  key: PATIENT_PROFILE_TOPIC
             - name: DISPENSATION_ACK_TOPIC
               valueFrom:
                 secretKeyRef:
