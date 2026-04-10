@@ -11,8 +11,13 @@ import org.apache.kafka.streams.kstream.*;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.stereotype.Service;
+import zm.gov.moh.zmscproelmispipeline.dto.DispensationPayload;
+import zm.gov.moh.zmscproelmispipeline.dto.DispensedDrug;
 import zm.gov.moh.zmscproelmispipeline.dto.MessagePayload;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
 import java.util.regex.Pattern;
 
 @Service
@@ -29,8 +34,17 @@ public class MessageRoutingTopology {
     @Value("${spring.kafka.topics.dispensation-acks}")
     private String dispensationAckTopic;
 
+    @Value("${spring.kafka.topics.dispensation}")
+    private String dispensationTopic;
+
+    @Value("${spring.kafka.topics.dispensation-prime}")
+    private String dispensationPrimeTopic;
+
     @Value("${spring.kafka.dlq.topic}")
     private String dlqTopic;
+
+    private static final DateTimeFormatter MSH_TIMESTAMP_FORMAT =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     private static final Pattern VALID_TOPIC_PATTERN = Pattern.compile("^[a-zA-Z0-9._-]+$");
 
@@ -51,6 +65,23 @@ public class MessageRoutingTopology {
     @Bean
     public KStream<String, String> dispensationAckRoutingStream(StreamsBuilder streamsBuilder) {
         return stream(streamsBuilder, dispensationAckTopic, "dispensation-ack-consumer");
+    }
+
+    @Bean
+    public KStream<String, String> dispensationPrimeStream(StreamsBuilder streamsBuilder) {
+        KStream<String, String> sourceStream = streamsBuilder
+                .stream(
+                        dispensationTopic,
+                        Consumed.with(Serdes.String(), Serdes.String())
+                                .withName("dispensation-consumer")
+                                .withOffsetResetPolicy(Topology.AutoOffsetReset.EARLIEST)
+                );
+
+        sourceStream
+                .filter((_, messageJson) -> isEligibleForPrime(messageJson))
+                .to(dispensationPrimeTopic, Produced.with(Serdes.String(), Serdes.String()));
+
+        return sourceStream;
     }
 
     private KStream<String, String> stream(StreamsBuilder streamsBuilder, String topic, String processorName) {
@@ -133,6 +164,53 @@ public class MessageRoutingTopology {
         } catch (Exception e) {
             log.error("❌ Unexpected error routing message: {}", e.getMessage(), e);
             return sendToDlq(messageJson, "Unexpected error: " + e.getMessage());
+        }
+    }
+
+    private boolean isEligibleForPrime(String messageJson) {
+        try {
+            DispensationPayload payload = objectMapper.readValue(messageJson, DispensationPayload.class);
+
+            if (payload == null || payload.getMsh() == null) {
+                log.warn("Dispensation message missing msh header, skipping prime routing");
+                return false;
+            }
+
+            String timestampStr = payload.getMsh().getTimestamp();
+            if (timestampStr == null || timestampStr.trim().isEmpty()) {
+                log.warn("Dispensation message {} missing msh timestamp, skipping prime routing",
+                        payload.getMsh().getMessageId());
+                return false;
+            }
+
+            LocalDateTime messageTime = LocalDateTime.parse(timestampStr.trim(), MSH_TIMESTAMP_FORMAT);
+            if (messageTime.isBefore(LocalDateTime.now().minusHours(24))) {
+                log.warn("Dispensation message {} timestamp {} is older than 24 hours, skipping prime routing",
+                        payload.getMsh().getMessageId(), timestampStr);
+                return false;
+            }
+
+            List<DispensedDrug> drugs = payload.getDispensedDrugs();
+            if (drugs == null || drugs.isEmpty()) {
+                log.warn("Dispensation message {} has no dispensed drugs, skipping prime routing",
+                        payload.getMsh().getMessageId());
+                return false;
+            }
+
+            boolean hasValidMedicationId = drugs.stream()
+                    .anyMatch(drug -> drug.getMedicationId() != null && !drug.getMedicationId().trim().isEmpty());
+
+            if (!hasValidMedicationId) {
+                log.warn("Dispensation message {} has no drug with a non-null medicationId, skipping prime routing",
+                        payload.getMsh().getMessageId());
+                return false;
+            }
+
+            return true;
+
+        } catch (Exception e) {
+            log.error("Failed to evaluate dispensation message for prime routing: {}", e.getMessage());
+            return false;
         }
     }
 

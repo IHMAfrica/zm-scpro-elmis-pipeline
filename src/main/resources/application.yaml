@@ -4,6 +4,8 @@ spring:
       prescriptions: ${PRESCRIPTION_TOPIC}
       patient-profiles: ${PATIENT_PROFILE_TOPIC}
       dispensation-acks: ${DISPENSATION_ACK_TOPIC}
+      dispensation: ${DISPENSATION_TOPIC:dispensations}
+      dispensation-prime: ${DISPENSATION_PRIME_TOPIC:dispensations-prime}
     dlq:
       topic: ${DLQ_TOPIC:scpro-elmis-dlq}
     bootstrap-servers: ${BOOTSTRAP_SERVERS}

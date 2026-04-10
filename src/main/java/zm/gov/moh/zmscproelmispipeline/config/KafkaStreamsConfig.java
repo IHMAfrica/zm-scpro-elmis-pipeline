@@ -40,14 +40,9 @@ public class KafkaStreamsConfig {
         props.put("sasl.mechanism", "SCRAM-SHA-256");
         props.put("sasl.jaas.config", jaasConfig);
 
-        // Performance optimizations
-        int numStreamThreads = 2;
-        props.put(StreamsConfig.NUM_STREAM_THREADS_CONFIG, numStreamThreads);
-        int cacheMaxSizeBuffering = 10485760;
-        int commitIntervalMs = 100;
-        props.put(StreamsConfig.COMMIT_INTERVAL_MS_CONFIG, commitIntervalMs);
+        props.put(StreamsConfig.NUM_STREAM_THREADS_CONFIG, 2);
+        props.put(StreamsConfig.COMMIT_INTERVAL_MS_CONFIG, 100);
 
-        // Producer configurations (for output)
         props.put(StreamsConfig.producerPrefix(org.apache.kafka.clients.producer.ProducerConfig.LINGER_MS_CONFIG), 10);
         props.put(StreamsConfig.producerPrefix(org.apache.kafka.clients.producer.ProducerConfig.BATCH_SIZE_CONFIG), 32768);
         props.put(StreamsConfig.producerPrefix(org.apache.kafka.clients.producer.ProducerConfig.COMPRESSION_TYPE_CONFIG), "lz4");
@@ -72,13 +67,9 @@ public class KafkaStreamsConfig {
         config.put("sasl.mechanism", "SCRAM-SHA-256");
         config.put("sasl.jaas.config", jaasConfig);
 
-
         return AdminClient.create(config);
     }
 
-    /**
-     * ObjectMapper for JSON processing
-     */
     @Bean
     public ObjectMapper objectMapper() {
         ObjectMapper mapper = new ObjectMapper();
