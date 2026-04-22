@@ -68,6 +68,21 @@ public class MessageRoutingTopology {
     }
 
     @Bean
+    public KStream<String, String> prescriptionDfzRoutingStream(StreamsBuilder streamsBuilder) {
+        return stream(streamsBuilder, "dfz-" + prescriptionTopic, "prescription-dfz-consumer");
+    }
+
+    @Bean
+    public KStream<String, String> patientProfileDfzRoutingStream(StreamsBuilder streamsBuilder) {
+        return stream(streamsBuilder, "dfz-" + patientProfileTopic, "patient-profile-dfz-consumer");
+    }
+
+    @Bean
+    public KStream<String, String> dispensationDfzAckRoutingStream(StreamsBuilder streamsBuilder) {
+        return stream(streamsBuilder, "dfz" + dispensationAckTopic, "dispensation-ack-dfz-consumer");
+    }
+
+    @Bean
     public KStream<String, String> dispensationPrimeStream(StreamsBuilder streamsBuilder) {
         KStream<String, String> sourceStream = streamsBuilder
                 .stream(
