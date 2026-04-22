@@ -79,7 +79,7 @@ public class MessageRoutingTopology {
 
     @Bean
     public KStream<String, String> dispensationDfzAckRoutingStream(StreamsBuilder streamsBuilder) {
-        return stream(streamsBuilder, "dfz" + dispensationAckTopic, "dispensation-ack-dfz-consumer");
+        return stream(streamsBuilder, "dfz-" + dispensationAckTopic, "dispensation-ack-dfz-consumer");
     }
 
     @Bean
